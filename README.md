@@ -1,2 +1,3 @@
 # firebase-test-ggoinkutdup
-firebase tese
+firebase test
+
