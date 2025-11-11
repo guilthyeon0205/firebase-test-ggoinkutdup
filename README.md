@@ -1,4 +1,4 @@
-# 팀 협업 캘린더 (Team Collaboration Calendar)
+# 팀 협업 캘린더
 
 ## 소개
 
