@@ -1,18 +1,86 @@
-rules_version='2'
-
+rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    match /{document=**} {
-      // This rule allows anyone with your database reference to view, edit,
-      // and delete all data in your database. It is useful for getting
-      // started, but it is configured to expire after 30 days because it
-      // leaves your app open to attackers. At that time, all client
-      // requests to your database will be denied.
-      //
-      // Make sure to write security rules for your app before that time, or
-      // else all client requests to your database will be denied until you
-      // update your rules.
-      allow read, write: if request.time < timestamp.date(2025, 10, 31);
+
+    // =================================================================
+    // 헬퍼 함수 (Helper Functions)
+    // =================================================================
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function userTeamId() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.teamId;
+    }
+
+    function isOwner(docData) {
+      return request.auth.uid == docData.ownerId;
+    }
+    
+    // 팀 가입 요청 (기존 멤버가 아니었지만 새로 멤버 배열에 추가되는 경우)
+    function isJoining(oldData, newData) {
+      return !oldData.members.hasAny([request.auth.uid]) && 
+             newData.members.hasAny([request.auth.uid]);
+    }
+
+    // ⭐ [추가] isLeaving 함수: 
+    // 팀 나가기 요청 (기존 멤버였지만 새 멤버 배열에서 제외되는 경우)
+    function isLeaving(oldData, newData) {
+      return oldData.members.hasAny([request.auth.uid]) && 
+             !newData.members.hasAny([request.auth.uid]);
+    }
+
+
+    // =================================================================
+    // 1. users 컬렉션 (팀 나가기/제거 시 업데이트 필요)
+    // =================================================================
+    match /users/{userId} {
+      // 읽기: 본인 문서이거나 같은 팀 멤버의 문서인 경우 허용 (닉네임 로딩용)
+      allow read: if isAuthenticated() && (
+        request.auth.uid == userId ||
+        (resource.data.teamId != null && resource.data.teamId == userTeamId())
+      );
+
+      allow create: if isAuthenticated() && request.auth.uid == userId;
+
+      // ⭐ [수정] update 규칙 강화: 
+      // 1. 본인 UID만 자신의 문서를 수정할 수 있으며
+      // 2. 'teamId' 필드가 변경될 때 (가입, 나가기, 제거)는
+      //    요청된 새로운 teamId 값이 유효한 string이거나, null (팀 나가기) 이어야 합니다.
+      allow update: if isAuthenticated() && request.auth.uid == userId
+                    && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['teamId', 'lastActive'])
+                    && (!('teamId' in request.resource.data) || request.resource.data.teamId is string || request.resource.data.teamId == null);
+    }
+
+    // =================================================================
+    // 2. teams 컬렉션 (팀 나가기 시 업데이트 필요)
+    // =================================================================
+    match /teams/{teamId} {
+      allow read: if isAuthenticated();
+
+      allow create: if isAuthenticated();
+
+      // ⭐ [최종 수정] update 규칙: 
+      // 1. 팀 소유자이거나
+      // 2. 팀 가입 요청이거나 (isJoining)
+      // 3. 팀 나가기 요청인 경우 (isLeaving)
+      allow update: if isAuthenticated() && (
+          isOwner(resource.data) || 
+          (
+              (isJoining(resource.data, request.resource.data) || isLeaving(resource.data, request.resource.data)) && 
+              request.resource.data.diff(resource.data).affectedKeys().hasOnly(['members'])
+          )
+      );
+
+      allow delete: if false;
+    }
+
+    // =================================================================
+    // 3. schedules 컬렉션 (팀 일정)
+    // =================================================================
+    match /schedules/{scheduleId} {
+      allow read, write, delete: if isAuthenticated() && resource.data.teamId == userTeamId();
+      allow create: if isAuthenticated() && request.resource.data.teamId == userTeamId();
     }
   }
 }

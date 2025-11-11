@@ -1,70 +1,74 @@
-# Getting Started with Create React App
+# 팀 협업 캘린더 (Team Collaboration Calendar)
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+## 소개
 
-## Available Scripts
+이 프로젝트는 팀 단위의 실시간 일정 공유 및 팀원 관리를 위한 웹 애플리케이션입니다. Firebase Firestore를 사용하여 모든 팀 데이터와 일정을 실시간으로 동기화하며, 반응형 캘린더 인터페이스를 통해 효율적인 협업을 지원합니다.
 
-In the project directory, you can run:
+## 주요 기능
 
-### `npm start`
+### 인증 (Authentication)
+- 이메일/비밀번호 기반의 회원가입 및 로그인, 또는 테스트를 위한 익명 로그인 지원.
 
-Runs the app in the development mode.\
-Open [http://localhost:3000](http://localhost:3000) to view it in your browser.
+### 팀 설정
+- 새로운 팀 생성 또는 기존 팀 ID를 통한 팀 참여 기능 제공.
 
-The page will reload when you make changes.\
-You may also see any lint errors in the console.
+### 실시간 일정 관리
+- 월별 캘린더 뷰를 통한 일정 확인 및 관리.
+- 특정 날짜에 대한 일정 추가 및 작성자 확인.
+- 자신이 작성한 일정만 삭제 가능.
 
-### `npm test`
+### 팀원 관리
+- 팀에 속한 모든 팀원 목록 및 실시간 온라인/오프라인 상태 표시.
+- 이메일을 통한 팀원 초대 및 추가 (사용자가 회원가입되어 있어야 함).
+- 팀원 삭제 기능.
 
-Launches the test runner in the interactive watch mode.\
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
+### 데이터 동기화
+- Firebase Firestore의 onSnapshot 리스너를 사용하여 모든 데이터(팀원, 일정)를 실시간으로 업데이트.
 
-### `npm run build`
+## 기술 스택
 
-Builds the app for production to the `build` folder.\
-It correctly bundles React in production mode and optimizes the build for the best performance.
+| 구분           | 기술            | 설명                                                       |
+|----------------|-----------------|------------------------------------------------------------|
+| **프론트엔드** | React (함수형 컴포넌트, Hooks) | 단일 파일 컴포넌트로 구성된 사용자 인터페이스.                 |
+| **스타일링**   | Tailwind CSS     | 모바일 및 데스크톱에 최적화된 완전 반응형 디자인.            |
+| **데이터베이스**| Firebase Firestore | 실시간 데이터 저장 및 동기화 (NoSQL).                       |
+| **인증**       | Firebase Auth    | 이메일/비밀번호 및 익명 사용자 관리.                        |
+| **개발 환경**  | Gemini Canvas    | 모든 코드가 단일 JSX 파일 내에 포함되어 실행됨.            |
 
-The build is minified and the filenames include the hashes.\
-Your app is ready to be deployed!
+## 데이터 구조 및 접근 (Firestore)
 
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
+애플리케이션 데이터는 보안 및 협업 요구 사항에 맞춰 아래와 같이 구성됩니다.
 
-### `npm run eject`
+### 데이터 컬렉션
 
-**Note: this is a one-way operation. Once you `eject`, you can't go back!**
+| 컬렉션         | 목적                                         | 경로 예시                                                       | 접근 권한                       |
+|----------------|--------------------------------------------|---------------------------------------------------------------|--------------------------------|
+| **teams**      | 팀 그룹 정보 및 멤버 UID 목록 저장         | `/artifacts/{appId}/public/data/teams/{teamId}`                | 팀 멤버만 읽기/쓰기 가능        |
+| **schedules**  | 팀별 캘린더 일정 저장                      | `/artifacts/{appId}/public/data/schedules`                     | 팀 멤버만 읽기/쓰기 가능        |
+| **user_data**  | 사용자 이름, 팀 ID 등 비공개 정보          | `/artifacts/{appId}/users/{userId}/user_data/{userId}`         | 해당 사용자만 읽기/쓰기 가능   |
+| **user_index** | 이메일 기반 검색을 위한 공개 인덱스       | `/artifacts/{appId}/public/data/user_index/{uid}`              | 모두 읽기 가능 (이메일, UID 포함) |
 
-If you aren't satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
+💡 **주요 사항**: 모든 데이터는 Firebase Security Rules를 기반으로 인증된 사용자만 접근할 수 있으며, 팀 데이터는 `teamId`를 기준으로 필터링됩니다.
 
-Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you're on your own.
+## 실행 방법
 
-You don't have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn't feel obligated to use this feature. However we understand that this tool wouldn't be useful if you couldn't customize it when you are ready for it.
+이 애플리케이션은 Gemini Canvas 환경에 최적화된 단일 파일 (App.jsx) 프로젝트입니다.
 
-## Learn More
+### 1. 코드 복사
+- 제공된 `App.jsx` 파일의 전체 내용을 복사합니다.
 
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
+### 2. 환경 설정
+- Firebase의 설정 값 (`__firebase_config`, `__initial_auth_token`, `__app_id`)이 런타임에 주입되는 환경에서 실행해야 합니다.
 
-To learn React, check out the [React documentation](https://reactjs.org/).
+### 3. 시작
+- 앱을 실행하면 랜딩 페이지에서 시작하며, 로그인, 회원가입 또는 익명 로그인을 통해 기능을 사용할 수 있습니다.
 
-### Code Splitting
+### 4. 팀 설정
+- 로그인 후에는 새 팀을 생성하거나 팀 ID를 입력하여 기존 팀에 참여할 수 있습니다.
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/code-splitting](https://facebook.github.io/create-react-app/docs/code-splitting)
+### 5. 협업 시작
+- 팀에 참여하면 캘린더 및 팀 관리 페이지를 통해 실시간으로 협업할 수 있습니다.
 
-### Analyzing the Bundle Size
+---
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size](https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size)
-
-### Making a Progressive Web App
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app](https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app)
-
-### Advanced Configuration
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/advanced-configuration](https://facebook.github.io/create-react-app/docs/advanced-configuration)
-
-### Deployment
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/deployment](https://facebook.github.io/create-react-app/docs/deployment)
-
-### `npm run build` fails to minify
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify](https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify)
+© 2025 Team Collaboration Calendar Project
